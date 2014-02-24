@@ -35,10 +35,13 @@ describe 'nova::compute::libvirt' do
 
     context 'with overridden parameters' do
       let :params do
-        { :libvirt_type => 'qemu' }
+        { :libvirt_type     => 'qemu',
+          :libvirt_cpu_mode => 'host-passthrough'
+        }
       end
 
       it { should contain_nova_config('DEFAULT/libvirt_type').with_value('qemu')}
+      it { should contain_nova_config('DEFAULT/libvirt_cpu_mode').with_value('host-passthrough')}
     end
 
     describe 'with migration_support enabled' do

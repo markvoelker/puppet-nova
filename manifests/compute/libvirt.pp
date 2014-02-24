@@ -5,9 +5,12 @@
 #
 # === Parameters:
 #
-# [*libvirt_type*]
+# [*virt_type*]
 #   (optional) Libvirt domain type. Options are: kvm, lxc, qemu, uml, xen
 #   Defaults to 'kvm'
+#
+# [*libvirt_type*]
+#   DEPRECATED: use virt_type instead.
 #
 # [*vncserver_listen*]
 #   (optional) IP address on which instance vncservers should listen
@@ -17,13 +20,42 @@
 #   (optional) Whether to support virtual machine migration
 #   Defaults to false
 #
+# [*cpu_mode*]
+#   (optional) The libvirt CPU mode to configure.  Possible values
+#   include custom, host-model, none, host-passthrough.  
+#   Defaults to 'host-model' if virt-type is set to either kvm or
+#   qemu, otherwise defaults to 'none'.
+#
 class nova::compute::libvirt (
-  $libvirt_type      = 'kvm',
+  $virt_type      = 'kvm',
   $vncserver_listen  = '127.0.0.1',
-  $migration_support = false
+  $migration_support = false,
+  $cpu_mode  = false,
+  # Deprecated parameters
+  $libvirt_type = false
 ) {
 
   include nova::params
+
+  # Deprecated parameters
+  if libvirt_type {
+    warning('libvirt_type is deprecated for virt_type')
+    $virt_type_real = $libvirt_type
+  } else {
+    $virt_type_real = $virt_type 
+  }
+
+  # cpu_mode has different defaults depending on hypervisor.
+  if !$cpu_mode {
+    case $cpu_mode {
+      'kvm','qemu': {
+        $cpu_mode_real = 'host-model'
+      }
+      default: {
+        $cpu_mode_real = 'None'
+      }
+    }
+  }
 
   Service['libvirt'] -> Service['nova-compute']
 
@@ -65,9 +97,11 @@ class nova::compute::libvirt (
   }
 
   nova_config {
-    'DEFAULT/compute_driver':   value => 'libvirt.LibvirtDriver';
-    'DEFAULT/libvirt_type':     value => $libvirt_type;
-    'DEFAULT/connection_type':  value => 'libvirt';
-    'DEFAULT/vncserver_listen': value => $vncserver_listen;
+    'DEFAULT/compute_driver':    value => 'libvirt.LibvirtDriver';
+    'DEFAULT/libvirt/virt_type': value => $virt_type_real;
+    'DEFAULT/libvirt/cpu_mode':  value => $cpu_mode_real;
+    'DEFAULT/connection_type':   value => 'libvirt';
+    'DEFAULT/vncserver_listen':  value => $vncserver_listen;
   }
+
 }
